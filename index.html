@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bloody Alien$ Collection</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>🚀 Bloody Alien$ Collection(Mint coming soon)</h1>
+  <h2> Please connect wallet holding at least 420 FBA tokens </h2>
+
+  <!-- Wallet / Token info -->
+  <div id="wallet-info">
+    <button id="connect-wallet">Connect Wallet</button>
+    <p id="wallet-address"></p>
+    <p>FBA Balance: <span id="fba-balance">0</span></p>
+  </div>
+
+  <!-- Gallery (hidden until whitelist check) -->
+  <div class="gallery" id="gallery" style="display:none;">
+    <div class="item" data-token-id="0">
+      <h2>Pinker Tape</h2>
+      <img class="thumbnail" src="https://gateway.btfs.io/btfs/QmUQobZkwJh1tUey5TnwM3RuMF11wBxhSoaig27yc7uUD6" alt="Pinker Tape">
+      <p>Pinker Tape</p>
+      <button class="mint-btn">Mint</button>
+    </div>
+    <div class="item" data-token-id="1">
+      <h2>333</h2>
+      <img class="thumbnail" src="https://gateway.btfs.io/btfs/QmasnbTbDe4nED2GkVTjtmRnAFbWyS7Y7cUiqMDANL4qq2" alt="333">
+      <p>333</p>
+      <button class="mint-btn">Mint</button>
+    </div>
+    <div class="item" data-token-id="2">
+      <h2>Wall</h2>
+      <img class="thumbnail" src="https://gateway.btfs.io/btfs/QmTqZ2FDpoThCUV9ebfxep2zaotMfj1Ffmo1VaPdSh64BH" alt="Wall">
+      <p>Wall</p>
+      <button class="mint-btn">Mint</button>
+    </div>
+    <div class="item" data-token-id="3">
+      <h2>I Got A Uzi</h2>
+      <img class="thumbnail" src="https://gateway.btfs.io/btfs/QmPdjpN8i7PCu2mFrztRL1ZeCcfWjwJRN8kvfkZ35XmK93" alt="I Got A Uzi">
+      <p>I Got A Uzi</p>
+      <button class="mint-btn">Mint</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal">
+    <span id="modal-close-button">x</span>
+    <img id="modal-content" src="" alt="NFT full View">
+  </div>
+
+  <script>
+    const modal = document.getElementById("modal");
+    const modalContent = document.getElementById("modal-content");
+    const modalCloseButton = document.getElementById("modal-close-button");
+    const connectButton = document.getElementById("connect-wallet");
+    const walletAddressEl = document.getElementById("wallet-address");
+    const fbaBalanceEl = document.getElementById("fba-balance");
+    const gallery = document.getElementById("gallery");
+
+    const FBA_CONTRACT = "TNW5ABkp3v4jfeDo1vRVjxa3gtnoxP3DBN";
+    const NFT_CONTRACT = "<YOUR_BLOODY_ALIENS_CONTRACT>"; // Replace with your deployed NFT contract
+    const FBA_ABI = [
+      { "constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},
+      { "constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"success","type":"bool"}],"type":"function"},
+      { "constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function"},
+      { "constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"success","type":"bool"}],"type":"function"},
+      { "constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"type":"function"}
+    ];
+
+    function showModal(thumbnail) {
+      modal.style.display = "flex";
+      modalContent.src = thumbnail.src;
+    }
+
+    function hideModal() { modal.style.display = "none"; }
+    modalCloseButton.addEventListener("click", hideModal);
+
+    document.querySelectorAll('.thumbnail').forEach(t => t.addEventListener('click', () => showModal(t)));
+
+    async function waitForTronWeb(timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        const interval = 100, maxWait = timeout;
+        let waited = 0;
+        const timer = setInterval(() => {
+          if(window.tronWeb && tronWeb.ready) { clearInterval(timer); resolve(window.tronWeb); }
+          else { waited += interval; if(waited >= maxWait){ clearInterval(timer); reject("tronWeb not ready"); } }
+        }, interval);
+      });
+    }
+
+    async function connectWallet() {
+      try {
+        if(!window.tronLink) { alert("Please install TronLink extension"); return; }
+        await window.tronLink.request({ method: "tron_requestAccounts" });
+        await waitForTronWeb(8000);
+
+        const address = tronWeb.defaultAddress.base58;
+        walletAddressEl.textContent = `Wallet: ${address}`;
+
+        const fbaContract = await tronWeb.contract(FBA_ABI, FBA_CONTRACT);
+        const decimals = await fbaContract.methods.decimals().call();
+        const rawBal = await fbaContract.methods.balanceOf(address).call();
+        const divisor = 10n ** BigInt(decimals);
+        const balance = parseFloat((BigInt(rawBal) / divisor).toString());
+
+        fbaBalanceEl.textContent = balance.toFixed(2);
+
+        // Whitelist: show gallery only if holding 420+ FBA
+        if(balance >= 420) { gallery.style.display = "flex"; } 
+        else { gallery.style.display = "none"; alert("You need at least 420 FBA to view the gallery"); }
+
+        connectButton.textContent = "Connected"; connectButton.disabled = true;
+      } catch(e) { console.error("connectWallet error:", e); alert("Wallet connection failed"); }
+    }
+
+    connectButton.addEventListener("click", connectWallet);
+
+    // Mint buttons
+    document.querySelectorAll(".mint-btn").forEach(button => {
+      button.addEventListener("click", async e => {
+        if(!window.tronWeb || !tronWeb.ready){ alert("Connect wallet first!"); return; }
+        const item = e.target.closest(".item");
+        const tokenId = item.dataset.tokenId;
+
+        try {
+          const address = tronWeb.defaultAddress.base58;
+          const nftContract = await tronWeb.contract().at(NFT_CONTRACT);
+          const fbaContract = await tronWeb.contract(FBA_ABI, FBA_CONTRACT);
+          const decimals = await fbaContract.methods.decimals().call();
+          const amountToSend = tronWeb.toBigNumber(420).times(tronWeb.toBigNumber(10).pow(decimals));
+
+          // Approve NFT contract if needed
+          const allowance = await fbaContract.methods.allowance(address, NFT_CONTRACT).call();
+          if(tronWeb.toBigNumber(allowance).lt(amountToSend)) {
+            await fbaContract.methods.approve(NFT_CONTRACT, amountToSend.toString()).send({ feeLimit: 100_000_000 });
+          }
+
+          // Call mintPublic
+          await nftContract.mintPublic().send({ feeLimit: 500_000_000 });
+          alert(`Successfully minted NFT #${tokenId}!`);
+          connectWallet();
+        } catch(err) { console.error("Mint failed:", err); alert("Mint failed: "+(err.message||err)); }
+      });
+    });
+  </script>
+</body>
+</html>
+
